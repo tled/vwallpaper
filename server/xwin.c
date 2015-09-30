@@ -122,23 +122,23 @@ Window create_window_on_head(Display *dpy, Heads* heads, int head) {
 	return win;
 }
 
-FILE* start_mplayer(Window* win, size_t mlen, const char* mplayer) {
+FILE* start_player(Window* win, size_t mlen, const char* player_cmd) {
 	FILE *pipe;
 	char* cmd;
 	cmd = malloc(sizeof(char)*(mlen+1));
-	snprintf(cmd, mlen, mplayer, (int) *win);
+	snprintf(cmd, mlen, player_cmd, (int) *win);
 	pipe = popen(cmd, "w");
 	free(cmd);
 	return pipe;
 }
 
-void stop_mplayer(FILE *pipe) {
+void stop_player(FILE *pipe) {
 	fprintf(pipe, "quit\n");
 	fflush(pipe);
 	pclose(pipe);
 }
 
-Player* create_player(int head, Display* disp, Heads* heads, size_t mlen, const char* mplayer) {
+Player* create_player(int head, Display* disp, Heads* heads, size_t mlen, const char* player_cmd) {
 	Player* out;
 	Region region;
 	
@@ -152,14 +152,14 @@ Player* create_player(int head, Display* disp, Heads* heads, size_t mlen, const 
 		XDestroyRegion(region);
 	}
 	
-	out->pipe = start_mplayer(&out->win, mlen, mplayer);
+	out->pipe = start_player(&out->win, mlen, player_cmd);
 	XSync(disp, out->win);
 	return out;
 }
 
 void destroy_player(Display* disp, Player* p) {
 	if ( p != NULL) {
-		stop_mplayer(p->pipe);
+		stop_player(p->pipe);
 		XDestroyWindow(disp, p->win);
 		XSync(disp, p->win);
 	}

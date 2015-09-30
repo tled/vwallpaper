@@ -40,7 +40,7 @@ typedef struct {
 Heads* get_heads(Display *dpy);
 Window create_window(Display *dpy, geom_t geom);
 Window create_window_on_head(Display *dpy, Heads* heads, int head);
-FILE* start_mplayer(Window* win, size_t mlen, const char* mplayer);
+FILE* start_player(Window* win, size_t mlen, const char* mplayer);
 void destroy_player(Display* disp, Player* p);
 void forward(Player* p, const char* s);
 Player* create_player(int head, Display* disp, Heads* heads, size_t mlen, const char* mplayer);
