@@ -32,6 +32,9 @@
 
 #define MPV "mpv --input-file=/dev/stdin --no-input-terminal --idle --really-quiet --fs --panscan=1 --wid=0x%x"
 #define MPVNOA " --no-audio" //leading \s is important!
+//{ "command": ["set_property", "loop", "inf"] }
+#define MPVLOOPON "{ \"command\": [\"set_property\", \"loop\", \"inf\"] }"
+#define MPVLOOPOFF "{ \"command\": [\"set_property\", \"loop\", 0] }"
 
 Display *disp;
 Heads *heads;
@@ -46,15 +49,35 @@ extern char* desktop_name;;
  * We need an socket or fifo for every head, and user, of course.
  */
 
+void stop_mpv(int head) {
+	destroy_player(disp, player[head]);
+	player[head] = NULL;
+}
+
+void start_mpv(int head) {
+	char* p;
+	size_t mlen;
+	//max. buffer length
+	mlen = strlen(MPV)+strlen(MPVNOA)+WID_LEN+1;
+	p = malloc(sizeof(char)*mlen);
+	//buffer length are safe here
+	strcpy(p, MPV);
+	if (!audio[head]) strcat(p, MPVNOA);
+
+	player[head] = create_player(head, disp, heads, mlen, p);
+	free(p);
+	
+	if (loop[head]) forward(player[head], MPVLOOPON);
+	else forward(player[head], MPVLOOPOFF);
+}
+
 // [head:] command
 // command: raw mpv command, either something like 'loadfile /path/to/video' or JSON-IPC string
 // pros: two way communication with mpv, enabling restart without dropping the current playlist
 void do_stuff(const char* cmd) {
 	
-	char *command, *p;
-	int restart_mpv = 0;
+	char *command;
 	int onhead, i, conv;
-	ssize_t mlen;
 	
 	conv = sscanf(cmd, "%d: %m[^\n]s", &onhead, &command);
 	
@@ -78,49 +101,34 @@ void do_stuff(const char* cmd) {
 
 	for (;i<onhead;i++){
 		if (strcmp(command, "quit") == 0) {
-			if (player[i]) destroy_player(disp, player[i]);
-			player[i] = NULL;
+			if (player[i]) stop_mpv(i);
 			continue;
 		}
-
 		if (strcmp(command, "audio on") == 0) {
-			//mpv needs a restart
-			restart_mpv = 1;
 			audio[i] = 1;
+			stop_mpv(i);
+			//start_mpv(i);
 			continue;
 		}
 		if (strcmp(command, "audio off") == 0) {
-			//mpv needs a restart
-			restart_mpv = 1;
 			audio[i] = 0;
+			stop_mpv(i);
+			//start_mpv(i);
 			continue;
 		}
 		if (strcmp(command, "loop on") == 0) {
 			loop[i] = 1;
+			forward(player[i], MPVLOOPON);
 			continue;
 		}
 		if (strcmp(command, "loop off") == 0) {
 			loop[i] = 0;
+			forward(player[i], MPVLOOPOFF);
 			continue;
 		}
-		//restarts mpv, and drops playlist, currently
-		if (restart_mpv) {
-			destroy_player(disp, player[i]);
-			player[i] = NULL;
-		}
 		if ( player[i] == NULL) {
-			mlen = strlen(MPV)+strlen(MPVNOA)+WID_LEN+1;
-			p = malloc(sizeof(char)*mlen);
-			//buffer length are safe here
-			strcpy(p, MPV);
-			if (!audio[i]) strcat(p, MPVNOA);
-			
-			player[i] = create_player(i, disp, heads, mlen, p);
-			free(p);
+			start_mpv(i);
 		}
-		//{ "command": ["set_property", "loop", "inf"] }
-		if (loop[i]) forward(player[i], "{ \"command\": [\"set_property\", \"loop\", \"inf\"] }");
-		else forward(player[i], "{ \"command\": [\"set_property\", \"loop\", 0] }");
 		forward(player[i], command);
 	}
 	free(command);
