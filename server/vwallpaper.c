@@ -104,6 +104,10 @@ void do_stuff(const char* cmd) {
 			if (player[i]) stop_mpv(i);
 			continue;
 		}
+		if (strcmp(command, "idle") == 0) {
+			if (player[i] == NULL) start_mpv(i);
+			continue;
+		}
 		if (strcmp(command, "audio on") == 0) {
 			audio[i] = 1;
 			stop_mpv(i);
@@ -126,6 +130,8 @@ void do_stuff(const char* cmd) {
 			forward(player[i], MPVLOOPOFF);
 			continue;
 		}
+		/* TODO: if not heads are given, do not start mpv
+		 * and forward command to currently active heads only*/
 		if ( player[i] == NULL) {
 			start_mpv(i);
 		}
@@ -248,10 +254,10 @@ int main(int argc, char** argv) {
 			printhelp();
 			return 1;
 		}
-		if (strcmp(argv[i], "-w") == 0) if (i++ < argc) desktop_name = argv[i];
+		if (strcmp(argv[i], "-w") == 0) if (++i < argc) desktop_name = argv[i];
 		if (strcmp(argv[i], "-d") == 0) {
 			soi = 1;
-			if (i++ < argc) sockpath = argv[i];
+			if (++i < argc) sockpath = argv[i];
 		}
 	}
 	
