@@ -27,7 +27,7 @@
 #include "xwin.h"
 
 #define BUFFER 5120 //more than enough
-#define SOCKPATH "/tmp/vwallpaper-%s"
+#define SOCKET ".vwallpaper.sock"
 #define PROMPT "VWallpaper $ "
 
 #define MPV "mpv --input-file=/dev/stdin --no-input-terminal --idle --really-quiet --fs --panscan=1 --wid=0x%x"
@@ -147,6 +147,16 @@ int rlinterface(void) {
 	return 0;
 }
 
+char* default_socket_path() {
+	char *p, *h;
+	size_t l;
+	h = getenv("HOME");
+	l = strlen(h) + strlen(SOCKET)+2;
+	p = malloc(sizeof(char)*(l));
+	snprintf(p, l, "%s/%s", h, SOCKET);
+	return p;
+}
+
 void teardown_sinterface(int lsock, char* sockpath) {
 	close(lsock);
 	unlink(sockpath);
@@ -157,20 +167,17 @@ int sinterface(const char* addr) {
 	socklen_t addrlen;
 	int lsock, asock;
 	char *buf = malloc(sizeof(char)*BUFFER);
-	char *sopath, *user;
+	char *sopath = NULL;
 	ssize_t size;
-	size_t psize;
 	
 	umask(0177);
 
-	sopath = (char*) addr;
+	if (addr) {
+		sopath = malloc(sizeof(char)*strlen(addr));
+		strcpy(sopath, addr);
+	}	
 	//using default socket
-	if (!sopath) {
-		user = getenv("USER");
-		psize = strlen(SOCKPATH)+strlen(user);
-		sopath = malloc(sizeof(char)*(psize+1));
-		snprintf(sopath, psize, SOCKPATH, user);
-	}
+	else sopath = default_socket_path();
 	printf("using socket: %s\n", sopath);
 	
 	addrlen = sizeof(struct sockaddr_un);
@@ -207,6 +214,7 @@ int sinterface(const char* addr) {
 		} while (buf[0] != '\0');
 		close(asock);
 	}
+	free(sopath);
 	return 1;
 }
 
